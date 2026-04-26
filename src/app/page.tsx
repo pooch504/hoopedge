@@ -12,6 +12,10 @@ type Game = {
   projected_total: number | null;
   pace: number | null;
   environment: number | null;
+  favorite_team?: string | null;
+  spread?: number | null;
+  home_moneyline?: number | null;
+  away_moneyline?: number | null;
 };
 
 type PlayerStat = {
@@ -134,6 +138,43 @@ function getGrade(environment: number | null) {
   return "Neutral";
 }
 
+function getTeamTotals(game: Game) {
+  if (
+    game.projected_total == null ||
+    game.spread == null ||
+    !game.favorite_team
+  ) {
+    return null;
+  }
+
+  const total = Number(game.projected_total);
+  const spread = Math.abs(Number(game.spread));
+
+  const favoriteTotal = total / 2 + spread / 2;
+  const underdogTotal = total / 2 - spread / 2;
+
+  if (game.favorite_team === game.home_team) {
+    return {
+      homeTotal: favoriteTotal,
+      awayTotal: underdogTotal,
+    };
+  }
+
+  if (game.favorite_team === game.away_team) {
+    return {
+      homeTotal: underdogTotal,
+      awayTotal: favoriteTotal,
+    };
+  }
+
+  return null;
+}
+
+function formatMoneyline(value: number | null | undefined) {
+  if (value == null) return "-";
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
 function streakCount(
   logs: PlayerStat[],
   stat: "points" | "rebounds" | "assists",
@@ -208,6 +249,22 @@ export default function Home() {
     setLoading(false);
   }
 
+  const uniqueGames = useMemo(() => {
+    const seen = new Set<string>();
+
+    return games.filter((game) => {
+      const key = [game.away_team, game.home_team]
+        .sort()
+        .join("-vs-")
+        .toLowerCase();
+
+      if (seen.has(key)) return false;
+
+      seen.add(key);
+      return true;
+    });
+  }, [games]);
+
   const strongest = signals.filter((s) => s.edge >= 10);
   const positive = signals.filter((s) => s.edge >= 5 && s.edge < 10);
 
@@ -242,9 +299,13 @@ export default function Home() {
           </p>
 
           <section className="mt-8 grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
-            {games.map((game) => {
+            {uniqueGames.map((game) => {
               const awayLogo = TEAM_LOGOS[game.away_team];
               const homeLogo = TEAM_LOGOS[game.home_team];
+              const teamTotals = getTeamTotals(game);
+              const hasSpread = game.favorite_team && game.spread != null;
+              const hasMoneyline =
+                game.away_moneyline != null || game.home_moneyline != null;
 
               return (
                 <Link
@@ -291,6 +352,52 @@ export default function Home() {
                     Environment: {game.environment ?? "-"} •{" "}
                     {getGrade(game.environment)}
                   </p>
+
+                  {(hasSpread || teamTotals || hasMoneyline) && (
+                    <div className="mt-4 rounded-xl border border-zinc-800 bg-black/30 p-3">
+                      {hasSpread && (
+                        <p className="text-sm font-bold text-zinc-200">
+                          Spread: {game.favorite_team}{" "}
+                          {Number(game.spread).toFixed(1)}
+                        </p>
+                      )}
+
+                      {teamTotals && (
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs text-zinc-500">Away Total</p>
+                            <p className="font-black text-white">
+                              {teamTotals.awayTotal.toFixed(1)}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-zinc-500">Home Total</p>
+                            <p className="font-black text-white">
+                              {teamTotals.homeTotal.toFixed(1)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {hasMoneyline && (
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-zinc-400">
+                          <p>
+                            Away ML:{" "}
+                            <span className="font-bold text-zinc-200">
+                              {formatMoneyline(game.away_moneyline)}
+                            </span>
+                          </p>
+                          <p>
+                            Home ML:{" "}
+                            <span className="font-bold text-zinc-200">
+                              {formatMoneyline(game.home_moneyline)}
+                            </span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="mt-4 h-2 rounded-full bg-zinc-800">
                     <div

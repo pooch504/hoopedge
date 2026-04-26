@@ -18,29 +18,8 @@ type Prop = {
   edge: number | null;
 };
 
-type PlayerStat = {
-  id: string;
-  player: string;
-  team: string | null;
-  game_date: string;
-  opponent: string | null;
-  points: number | null;
-  rebounds: number | null;
-  assists: number | null;
-  threes: number | null;
-};
-
-type Game = {
-  id: string;
-  away_team: string;
-  home_team: string;
-  game_time: string;
-};
-
 function cleanSlug(text: string) {
-  return decodeURIComponent(text)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+  return text
     .toLowerCase()
     .replaceAll(".", "")
     .replaceAll("'", "")
@@ -53,123 +32,62 @@ function formatOdds(odds: number) {
   return odds > 0 ? `+${odds}` : `${odds}`;
 }
 
-function getStatForMarket(log: PlayerStat, market: string) {
-  const normalized = market.toLowerCase();
-
-  if (normalized.includes("pra")) {
-    return (log.points ?? 0) + (log.rebounds ?? 0) + (log.assists ?? 0);
-  }
-
-  if (normalized.includes("point")) return log.points ?? 0;
-  if (normalized.includes("rebound")) return log.rebounds ?? 0;
-  if (normalized.includes("assist")) return log.assists ?? 0;
-  if (normalized.includes("3pm")) return log.threes ?? 0;
-  if (normalized.includes("three")) return log.threes ?? 0;
-
-  return 0;
-}
-
-function calculateEdge(avg: number, line: number) {
-  if (!line || line <= 0) return null;
-  return ((avg - line) / line) * 100;
-}
-
-function getEdgeLabel(edge: number | null) {
+function signalTier(edge: number | null) {
   if (edge === null) return "Pending";
-  if (edge >= 50) return "Elite";
-  if (edge >= 20) return "Strong";
+  if (edge >= 20) return "Elite";
+  if (edge >= 10) return "Strong";
   if (edge >= 5) return "Lean";
-  if (edge > -5) return "Neutral";
-  return "Fade";
+  if (edge > 0) return "Small Edge";
+  return "Neutral";
 }
 
-function getEdgeColor(edge: number | null) {
+function signalColor(edge: number | null) {
   if (edge === null) return "text-zinc-400";
-  if (edge >= 50) return "text-emerald-400";
-  if (edge >= 20) return "text-green-400";
+  if (edge >= 20) return "text-emerald-400";
+  if (edge >= 10) return "text-green-400";
   if (edge >= 5) return "text-yellow-400";
-  if (edge > -5) return "text-zinc-300";
-  return "text-red-400";
+  if (edge > 0) return "text-blue-400";
+  return "text-zinc-400";
 }
 
-function getBadgeStyle(edge: number | null) {
-  if (edge === null) return "border-zinc-700 bg-zinc-800 text-zinc-300";
-  if (edge >= 50) return "border-emerald-500/40 bg-emerald-500/15 text-emerald-300";
-  if (edge >= 20) return "border-green-500/40 bg-green-500/15 text-green-300";
-  if (edge >= 5) return "border-yellow-500/40 bg-yellow-500/15 text-yellow-300";
-  if (edge > -5) return "border-zinc-700 bg-zinc-800 text-zinc-300";
-  return "border-red-500/40 bg-red-500/15 text-red-300";
+function signalBadge(edge: number | null) {
+  if (edge === null) return "border-zinc-700 bg-zinc-900 text-zinc-300";
+  if (edge >= 20) return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
+  if (edge >= 10) return "border-green-500/40 bg-green-500/10 text-green-300";
+  if (edge >= 5) return "border-yellow-500/40 bg-yellow-500/10 text-yellow-300";
+  if (edge > 0) return "border-blue-500/40 bg-blue-500/10 text-blue-300";
+  return "border-zinc-700 bg-zinc-900 text-zinc-300";
 }
 
 export default function PropsPage() {
   const [props, setProps] = useState<Prop[]>([]);
-  const [stats, setStats] = useState<PlayerStat[]>([]);
-  const [games, setGames] = useState<Game[]>([]);
   const [loading, setLoading] = useState(true);
-
-  const [search, setSearch] = useState("");
   const [marketFilter, setMarketFilter] = useState("All");
   const [bookFilter, setBookFilter] = useState("All");
-  const [tierFilter, setTierFilter] = useState("All");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
-    fetchData();
+    loadProps();
   }, []);
 
-  async function fetchData() {
+  async function loadProps() {
     setLoading(true);
 
-    const { data: propsData } = await supabase
+    const { data, error } = await supabase
       .from("props")
       .select("*")
-      .order("player", { ascending: true });
+      .order("edge", { ascending: false })
+      .limit(1000);
 
-    const { data: statsData } = await supabase
-      .from("player_stats")
-      .select("*")
-      .order("game_date", { ascending: false });
+    if (error) {
+      console.error(error.message);
+      setProps([]);
+    } else {
+      setProps((data as Prop[]) || []);
+    }
 
-    const { data: gamesData } = await supabase
-      .from("games")
-      .select("id, away_team, home_team, game_time");
-
-    setProps((propsData as Prop[]) || []);
-    setStats((statsData as PlayerStat[]) || []);
-    setGames((gamesData as Game[]) || []);
     setLoading(false);
   }
-
-  const enrichedProps = useMemo(() => {
-    return props.map((prop) => {
-      const playerLogs = stats
-        .filter((log) => cleanSlug(log.player) === cleanSlug(prop.player))
-        .slice(0, 10);
-
-      const values = playerLogs.map((log) => getStatForMarket(log, prop.market));
-      const total = values.length;
-      const hits = values.filter((value) => value >= prop.line).length;
-      const hitRate = total > 0 ? Math.round((hits / total) * 100) : 0;
-      const recentAvg =
-        total > 0
-          ? Number((values.reduce((sum, value) => sum + value, 0) / total).toFixed(1))
-          : 0;
-
-      const calculatedEdge = calculateEdge(recentAvg, prop.line);
-      const tier = getEdgeLabel(calculatedEdge);
-      const game = games.find((g) => g.id === prop.game_id);
-
-      return {
-        ...prop,
-        recentAvg,
-        hits,
-        total,
-        hitRate,
-        calculatedEdge,
-        tier,
-        matchup: game ? `${game.away_team} @ ${game.home_team}` : "Unknown Game",
-      };
-    });
-  }, [props, stats, games]);
 
   const markets = useMemo(() => {
     return ["All", ...Array.from(new Set(props.map((p) => p.market))).sort()];
@@ -180,29 +98,29 @@ export default function PropsPage() {
   }, [props]);
 
   const filteredProps = useMemo(() => {
-    return enrichedProps
-      .filter((prop) =>
-        search.trim()
-          ? prop.player.toLowerCase().includes(search.toLowerCase())
-          : true
-      )
-      .filter((prop) =>
-        marketFilter === "All" ? true : prop.market === marketFilter
-      )
-      .filter((prop) => (bookFilter === "All" ? true : prop.book === bookFilter))
-      .filter((prop) => (tierFilter === "All" ? true : prop.tier === tierFilter))
-      .sort((a, b) => {
-        const aEdge = a.calculatedEdge ?? -999;
-        const bEdge = b.calculatedEdge ?? -999;
-        return bEdge - aEdge;
-      });
-  }, [enrichedProps, search, marketFilter, bookFilter, tierFilter]);
+    let rows = [...props];
 
-  const topPlays = useMemo(() => {
-    return filteredProps
-      .filter((prop) => (prop.calculatedEdge ?? -999) >= 20)
-      .slice(0, 5);
-  }, [filteredProps]);
+    if (marketFilter !== "All") {
+      rows = rows.filter((p) => p.market === marketFilter);
+    }
+
+    if (bookFilter !== "All") {
+      rows = rows.filter((p) => p.book === bookFilter);
+    }
+
+    if (search.trim()) {
+      rows = rows.filter((p) =>
+        p.player.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    return rows.sort((a, b) => (b.edge ?? -999) - (a.edge ?? -999));
+  }, [props, marketFilter, bookFilter, search]);
+
+  const bestSignals = filteredProps.filter((p) => (p.edge ?? 0) > 0).slice(0, 8);
+  const eliteSignals = filteredProps.filter((p) => (p.edge ?? 0) >= 20).length;
+  const strongSignals = filteredProps.filter((p) => (p.edge ?? 0) >= 10).length;
+  const totalWithEdges = filteredProps.filter((p) => p.edge !== null).length;
 
   if (loading) {
     return (
@@ -215,32 +133,112 @@ export default function PropsPage() {
   return (
     <main className="min-h-screen bg-[#050607] px-8 py-8 text-white">
       <section className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-black tracking-tight">
-              Props Intelligence
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-400">
+              HoopEdge Props Intelligence
+            </p>
+            <h1 className="mt-1 text-4xl font-black tracking-tight">
+              Best Signals Board
             </h1>
-            <p className="mt-2 text-zinc-400">
-              Market lines ranked by recent player performance, hit rate, and calculated edge.
+            <p className="mt-2 max-w-3xl text-zinc-400">
+              Analytics-first prop board ranked by calculated edge, model probability,
+              recent hit-rate logic, and live market context.
             </p>
           </div>
 
-          <Link
-            href="/"
-            className="rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-bold text-zinc-300 hover:bg-zinc-800"
+          <button
+            onClick={loadProps}
+            className="rounded-xl border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:border-emerald-500/60 hover:bg-zinc-800"
           >
-            ← Back to Slate
-          </Link>
+            Refresh Board
+          </button>
         </div>
 
-        <section className="mb-8 grid gap-5 md:grid-cols-4">
-          <Card label="Total Records" value={props.length} />
-          <Card label="Filtered" value={filteredProps.length} />
-          <Card label="Top Plays" value={topPlays.length} />
-          <Card label="Players" value={new Set(props.map((p) => p.player)).size} />
+        <section className="mt-8 grid gap-5 md:grid-cols-4">
+          <StatCard label="Loaded Props" value={props.length} />
+          <StatCard label="Filtered Props" value={filteredProps.length} />
+          <StatCard label="Edges Calculated" value={totalWithEdges} />
+          <StatCard label="Strong+ Signals" value={strongSignals} color="text-emerald-400" />
         </section>
 
-        <section className="mb-10 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+        <section className="mt-8 overflow-hidden rounded-2xl border border-emerald-500/40 bg-emerald-500/10">
+          <div className="border-b border-emerald-500/20 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-emerald-300">
+                  Best Bets UI
+                </p>
+                <h2 className="mt-1 text-2xl font-black">
+                  Top Performance Edges
+                </h2>
+                <p className="mt-2 text-sm text-zinc-300">
+                  Ranked by model probability minus implied probability. Use as an
+                  analytics signal board, not as a bet slip.
+                </p>
+              </div>
+
+              <div className="rounded-full border border-emerald-500/40 bg-black/30 px-4 py-2 text-sm font-bold text-emerald-300">
+                Elite Signals: {eliteSignals}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-5 p-5 md:grid-cols-2 xl:grid-cols-4">
+            {bestSignals.map((prop, index) => (
+              <Link
+                key={prop.id}
+                href={`/players/${cleanSlug(prop.player)}`}
+                className="rounded-2xl border border-zinc-800 bg-black/40 p-5 transition hover:-translate-y-1 hover:border-emerald-500/60 hover:bg-zinc-950"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold text-zinc-500">
+                      #{index + 1} Signal
+                    </p>
+                    <h3 className="mt-2 text-lg font-black">{prop.player}</h3>
+                    <p className="mt-1 text-sm text-zinc-400">
+                      {prop.market} {prop.line}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-bold ${signalBadge(
+                      prop.edge
+                    )}`}
+                  >
+                    {signalTier(prop.edge)}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <MiniStat label="Model" value={`${prop.model_prob ?? "-"}%`} />
+                  <MiniStat label="Implied" value={`${prop.implied_prob ?? "-"}%`} />
+                  <MiniStat label="Odds" value={formatOdds(prop.odds)} />
+                  <MiniStat label="Book" value={prop.book} />
+                </div>
+
+                <p className={`mt-5 text-3xl font-black ${signalColor(prop.edge)}`}>
+                  {prop.edge !== null
+                    ? `${prop.edge > 0 ? "+" : ""}${prop.edge.toFixed(1)}%`
+                    : "-"}
+                </p>
+
+                <p className="mt-2 text-xs text-zinc-500">
+                  Edge = model probability minus implied probability.
+                </p>
+              </Link>
+            ))}
+
+            {bestSignals.length === 0 && (
+              <div className="col-span-full rounded-xl border border-zinc-800 bg-black/40 p-8 text-center text-zinc-400">
+                No positive edge signals found yet. Run daily sync and calculate edges.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
           <div className="grid gap-4 md:grid-cols-4">
             <div>
               <label className="text-xs font-bold uppercase text-zinc-500">
@@ -250,7 +248,7 @@ export default function PropsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Josh Hart..."
-                className="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+                className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-emerald-500"
               />
             </div>
 
@@ -261,10 +259,12 @@ export default function PropsPage() {
               <select
                 value={marketFilter}
                 onChange={(e) => setMarketFilter(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+                className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-emerald-500"
               >
                 {markets.map((market) => (
-                  <option key={market}>{market}</option>
+                  <option key={market} value={market}>
+                    {market}
+                  </option>
                 ))}
               </select>
             </div>
@@ -276,96 +276,53 @@ export default function PropsPage() {
               <select
                 value={bookFilter}
                 onChange={(e) => setBookFilter(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+                className="mt-2 w-full rounded-lg border border-zinc-800 bg-black px-3 py-2 text-sm text-white outline-none transition focus:border-emerald-500"
               >
                 {books.map((book) => (
-                  <option key={book}>{book}</option>
+                  <option key={book} value={book}>
+                    {book}
+                  </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="text-xs font-bold uppercase text-zinc-500">
-                Edge Tier
-              </label>
-              <select
-                value={tierFilter}
-                onChange={(e) => setTierFilter(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setMarketFilter("All");
+                  setBookFilter("All");
+                }}
+                className="w-full rounded-lg bg-zinc-800 px-4 py-2 text-sm font-bold text-zinc-200 transition hover:bg-zinc-700"
               >
-                {["All", "Elite", "Strong", "Lean", "Neutral", "Fade", "Pending"].map(
-                  (tier) => (
-                    <option key={tier}>{tier}</option>
-                  )
-                )}
-              </select>
+                Clear Filters
+              </button>
             </div>
           </div>
         </section>
 
-        <section className="mb-10">
-          <h2 className="mb-2 text-2xl font-bold">Top Plays by Calculated Edge</h2>
-          <p className="mb-5 text-zinc-400">
-            Ranked using recent average versus current market line.
-          </p>
-
-          <div className="grid gap-5 md:grid-cols-5">
-            {topPlays.map((prop, index) => (
-              <Link
-                key={prop.id}
-                href={`/players/${cleanSlug(prop.player)}`}
-                className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition hover:-translate-y-1 hover:border-emerald-500/60"
-              >
-                <p className="text-sm text-zinc-500">#{index + 1} Edge</p>
-                <h3 className="mt-2 font-black text-white">{prop.player}</h3>
-                <p className="mt-2 text-sm text-zinc-400">
-                  {prop.market} {prop.line}
-                </p>
-
-                <p className={`mt-4 text-2xl font-black ${getEdgeColor(prop.calculatedEdge)}`}>
-                  {prop.calculatedEdge !== null
-                    ? `${prop.calculatedEdge > 0 ? "+" : ""}${prop.calculatedEdge.toFixed(1)}%`
-                    : "-"}
-                </p>
-
-                <span
-                  className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-bold ${getBadgeStyle(
-                    prop.calculatedEdge
-                  )}`}
-                >
-                  {prop.tier}
-                </span>
-
-                <p className="mt-3 text-xs text-zinc-500">
-                  Hit Rate: {prop.hits}/{prop.total} ({prop.hitRate}%)
-                </p>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+        <section className="mt-8 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
           <div className="border-b border-zinc-800 p-5">
-            <h2 className="text-2xl font-bold">Full Props Edge Table</h2>
-            <p className="mt-1 text-zinc-400">
-              Sorted from strongest calculated edge to weakest.
+            <h2 className="text-xl font-black">Full Props Intelligence Table</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              Sticky header, sorted by edge, with model and market context.
             </p>
           </div>
 
-          <div className="max-h-[760px] overflow-auto">
-            <table className="w-full min-w-[1200px] text-sm">
-              <thead className="sticky top-0 z-20 bg-zinc-950 text-zinc-400 shadow-lg shadow-black/30">
+          <div className="max-h-[700px] overflow-auto">
+            <table className="w-full min-w-[1100px] text-sm">
+              <thead className="sticky top-0 z-10 bg-zinc-950 text-zinc-400 shadow-lg shadow-black/30">
                 <tr>
-                  <th className="p-4 text-left">Player</th>
-                  <th className="p-4 text-center">Matchup</th>
-                  <th className="p-4 text-center">Market</th>
-                  <th className="p-4 text-center">Line</th>
-                  <th className="p-4 text-center">Odds</th>
-                  <th className="p-4 text-center">Book</th>
-                  <th className="p-4 text-center">Recent Avg</th>
-                  <th className="p-4 text-center">Hit Rate</th>
-                  <th className="p-4 text-center">Calc Edge</th>
-                  <th className="p-4 text-center">Tier</th>
+                  <Th align="left">Player</Th>
+                  <Th>Team</Th>
+                  <Th>Market</Th>
+                  <Th>Line</Th>
+                  <Th>Odds</Th>
+                  <Th>Book</Th>
+                  <Th>Model %</Th>
+                  <Th>Implied %</Th>
+                  <Th>Edge</Th>
+                  <Th>Tier</Th>
                 </tr>
               </thead>
 
@@ -373,66 +330,51 @@ export default function PropsPage() {
                 {filteredProps.map((prop, index) => (
                   <tr
                     key={prop.id}
-                    className={`border-t border-zinc-800 transition hover:bg-blue-500/10 ${
-                      index % 2 === 0 ? "bg-zinc-900" : "bg-zinc-950/40"
+                    className={`border-t border-zinc-800 transition hover:bg-emerald-500/10 ${
+                      index % 2 === 0 ? "bg-zinc-900/40" : "bg-black"
                     }`}
                   >
-                    <td className="p-4 font-bold">
+                    <Td align="left" bold>
                       <Link
                         href={`/players/${cleanSlug(prop.player)}`}
                         className="hover:text-blue-400"
                       >
                         {prop.player}
                       </Link>
-                    </td>
-
-                    <td className="p-4 text-center text-zinc-400">
-                      {prop.matchup}
-                    </td>
-
-                    <td className="p-4 text-center">{prop.market}</td>
-
-                    <td className="p-4 text-center font-bold">{prop.line}</td>
-
-                    <td className="p-4 text-center font-bold text-blue-400">
+                    </Td>
+                    <Td>{prop.team ?? "-"}</Td>
+                    <Td>
+                      <span className="rounded-full border border-zinc-700 bg-black px-3 py-1 text-xs font-bold text-zinc-300">
+                        {prop.market}
+                      </span>
+                    </Td>
+                    <Td bold>{prop.line}</Td>
+                    <Td className="font-bold text-blue-400">
                       {formatOdds(prop.odds)}
-                    </td>
-
-                    <td className="p-4 text-center text-zinc-400">{prop.book}</td>
-
-                    <td className="p-4 text-center font-bold">
-                      {prop.recentAvg}
-                    </td>
-
-                    <td className="p-4 text-center text-zinc-300">
-                      {prop.hits}/{prop.total} ({prop.hitRate}%)
-                    </td>
-
-                    <td
-                      className={`p-4 text-center font-black ${getEdgeColor(
-                        prop.calculatedEdge
-                      )}`}
-                    >
-                      {prop.calculatedEdge !== null
-                        ? `${prop.calculatedEdge > 0 ? "+" : ""}${prop.calculatedEdge.toFixed(1)}%`
+                    </Td>
+                    <Td>{prop.book}</Td>
+                    <Td bold>{prop.model_prob ?? "-"}%</Td>
+                    <Td>{prop.implied_prob ?? "-"}%</Td>
+                    <Td className={`font-black ${signalColor(prop.edge)}`}>
+                      {prop.edge !== null
+                        ? `${prop.edge > 0 ? "+" : ""}${prop.edge.toFixed(1)}%`
                         : "-"}
-                    </td>
-
-                    <td className="p-4 text-center">
+                    </Td>
+                    <Td>
                       <span
-                        className={`rounded-full border px-3 py-1 text-xs font-bold ${getBadgeStyle(
-                          prop.calculatedEdge
+                        className={`rounded-full border px-3 py-1 text-xs font-bold ${signalBadge(
+                          prop.edge
                         )}`}
                       >
-                        {prop.tier}
+                        {signalTier(prop.edge)}
                       </span>
-                    </td>
+                    </Td>
                   </tr>
                 ))}
 
                 {filteredProps.length === 0 && (
                   <tr>
-                    <td colSpan={10} className="p-6 text-center text-zinc-400">
+                    <td colSpan={10} className="p-8 text-center text-zinc-400">
                       No props match your filters.
                     </td>
                   </tr>
@@ -446,11 +388,68 @@ export default function PropsPage() {
   );
 }
 
-function Card({ label, value }: { label: string; value: string | number }) {
+function StatCard({
+  label,
+  value,
+  color = "text-white",
+}: {
+  label: string;
+  value: string | number;
+  color?: string;
+}) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-6">
-      <p className="text-zinc-400">{label}</p>
-      <p className="mt-3 text-3xl font-black">{value}</p>
+    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+      <p className="text-sm text-zinc-400">{label}</p>
+      <p className={`mt-2 text-3xl font-black ${color}`}>{value}</p>
     </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+      <p className="text-xs text-zinc-500">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function Th({
+  children,
+  align = "center",
+}: {
+  children: React.ReactNode;
+  align?: "left" | "center";
+}) {
+  return (
+    <th
+      className={`p-4 font-semibold ${
+        align === "left" ? "text-left" : "text-center"
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  align = "center",
+  bold = false,
+  className = "",
+}: {
+  children: React.ReactNode;
+  align?: "left" | "center";
+  bold?: boolean;
+  className?: string;
+}) {
+  return (
+    <td
+      className={`p-4 ${
+        align === "left" ? "text-left" : "text-center"
+      } ${bold ? "font-bold" : "text-zinc-300"} ${className}`}
+    >
+      {children}
+    </td>
   );
 }
