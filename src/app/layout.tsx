@@ -1,23 +1,19 @@
-import "./globals.css";
-import Navbar from "@/components/Navbar";
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "HoopEdge",
-  description: "NBA Props Intelligence",
+  description: "NBA and WNBA matchup intelligence and prop edges.",
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="en">
-      <body className="bg-zinc-950 text-white">
-        <Navbar />
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
