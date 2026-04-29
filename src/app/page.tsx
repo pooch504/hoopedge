@@ -16,6 +16,7 @@ type Game = {
   spread?: number | null;
   home_moneyline?: number | null;
   away_moneyline?: number | null;
+  league?: string | null;
 };
 
 type PlayerStat = {
@@ -28,90 +29,68 @@ type PlayerStat = {
   rebounds: number | null;
   assists: number | null;
   threes: number | null;
+  league?: string | null;
 };
 
-type Signal = {
+type Prop = {
+  id?: string;
   player: string;
-  team: string;
+  team: string | null;
   market: string;
-  line: number;
-  game: string;
-  odds: number;
-  edge: number;
-  confidence: number;
-  note: string;
-  headshot: string;
+  line: number | null;
+  odds: number | null;
+  edge: number | null;
+  confidence?: number | null;
+  hit_rate?: number | null;
+  note?: string | null;
+  league?: string | null;
+  game_id?: string | null;
+};
+
+type RankedProp = Prop & {
+  score: number;
 };
 
 const TEAM_LOGOS: Record<string, string> = {
-  "Detroit Pistons": "https://cdn.nba.com/logos/nba/1610612765/primary/L/logo.svg",
-  "Orlando Magic": "https://cdn.nba.com/logos/nba/1610612753/primary/L/logo.svg",
-  "Oklahoma City Thunder": "https://cdn.nba.com/logos/nba/1610612760/primary/L/logo.svg",
-  "Phoenix Suns": "https://cdn.nba.com/logos/nba/1610612756/primary/L/logo.svg",
-  "New York Knicks": "https://cdn.nba.com/logos/nba/1610612752/primary/L/logo.svg",
   "Atlanta Hawks": "https://cdn.nba.com/logos/nba/1610612737/primary/L/logo.svg",
-  "Denver Nuggets": "https://cdn.nba.com/logos/nba/1610612743/primary/L/logo.svg",
-  "Minnesota Timberwolves": "https://cdn.nba.com/logos/nba/1610612750/primary/L/logo.svg",
-  "Cleveland Cavaliers": "https://cdn.nba.com/logos/nba/1610612739/primary/L/logo.svg",
-  "Toronto Raptors": "https://cdn.nba.com/logos/nba/1610612761/primary/L/logo.svg",
-  "San Antonio Spurs": "https://cdn.nba.com/logos/nba/1610612759/primary/L/logo.svg",
-  "Portland Trail Blazers": "https://cdn.nba.com/logos/nba/1610612757/primary/L/logo.svg",
   "Boston Celtics": "https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg",
-  "Philadelphia 76ers": "https://cdn.nba.com/logos/nba/1610612755/primary/L/logo.svg",
-  "Los Angeles Lakers": "https://cdn.nba.com/logos/nba/1610612747/primary/L/logo.svg",
+  "Brooklyn Nets": "https://cdn.nba.com/logos/nba/1610612751/primary/L/logo.svg",
+  "Charlotte Hornets": "https://cdn.nba.com/logos/nba/1610612766/primary/L/logo.svg",
+  "Chicago Bulls": "https://cdn.nba.com/logos/nba/1610612741/primary/L/logo.svg",
+  "Cleveland Cavaliers": "https://cdn.nba.com/logos/nba/1610612739/primary/L/logo.svg",
+  "Dallas Mavericks": "https://cdn.nba.com/logos/nba/1610612742/primary/L/logo.svg",
+  "Denver Nuggets": "https://cdn.nba.com/logos/nba/1610612743/primary/L/logo.svg",
+  "Detroit Pistons": "https://cdn.nba.com/logos/nba/1610612765/primary/L/logo.svg",
+  "Golden State Warriors": "https://cdn.nba.com/logos/nba/1610612744/primary/L/logo.svg",
   "Houston Rockets": "https://cdn.nba.com/logos/nba/1610612745/primary/L/logo.svg",
-};
+  "Indiana Pacers": "https://cdn.nba.com/logos/nba/1610612754/primary/L/logo.svg",
+  "LA Clippers": "https://cdn.nba.com/logos/nba/1610612746/primary/L/logo.svg",
+  "Los Angeles Clippers": "https://cdn.nba.com/logos/nba/1610612746/primary/L/logo.svg",
+  "Los Angeles Lakers": "https://cdn.nba.com/logos/nba/1610612747/primary/L/logo.svg",
+  "Memphis Grizzlies": "https://cdn.nba.com/logos/nba/1610612763/primary/L/logo.svg",
+  "Miami Heat": "https://cdn.nba.com/logos/nba/1610612748/primary/L/logo.svg",
+  "Milwaukee Bucks": "https://cdn.nba.com/logos/nba/1610612749/primary/L/logo.svg",
+  "Minnesota Timberwolves": "https://cdn.nba.com/logos/nba/1610612750/primary/L/logo.svg",
+  "New Orleans Pelicans": "https://cdn.nba.com/logos/nba/1610612740/primary/L/logo.svg",
+  "New York Knicks": "https://cdn.nba.com/logos/nba/1610612752/primary/L/logo.svg",
+  "Oklahoma City Thunder": "https://cdn.nba.com/logos/nba/1610612760/primary/L/logo.svg",
+  "Orlando Magic": "https://cdn.nba.com/logos/nba/1610612753/primary/L/logo.svg",
+  "Philadelphia 76ers": "https://cdn.nba.com/logos/nba/1610612755/primary/L/logo.svg",
+  "Phoenix Suns": "https://cdn.nba.com/logos/nba/1610612756/primary/L/logo.svg",
+  "Portland Trail Blazers": "https://cdn.nba.com/logos/nba/1610612757/primary/L/logo.svg",
+  "Sacramento Kings": "https://cdn.nba.com/logos/nba/1610612758/primary/L/logo.svg",
+  "San Antonio Spurs": "https://cdn.nba.com/logos/nba/1610612759/primary/L/logo.svg",
+  "Toronto Raptors": "https://cdn.nba.com/logos/nba/1610612761/primary/L/logo.svg",
+  "Utah Jazz": "https://cdn.nba.com/logos/nba/1610612762/primary/L/logo.svg",
+  "Washington Wizards": "https://cdn.nba.com/logos/nba/1610612764/primary/L/logo.svg",
 
-const signals: Signal[] = [
-  {
-    player: "Luka Doncic",
-    team: "LAL",
-    market: "PRA",
-    line: 45.5,
-    game: "Warriors @ Lakers",
-    odds: -110,
-    edge: 14.6,
-    confidence: 100,
-    note: "elite environment + fast pace + high total",
-    headshot: "https://cdn.nba.com/headshots/nba/latest/260x190/1629029.png",
-  },
-  {
-    player: "Stephen Curry",
-    team: "GSW",
-    market: "Points",
-    line: 24.5,
-    game: "Warriors @ Lakers",
-    odds: -110,
-    edge: 8.6,
-    confidence: 100,
-    note: "elite environment + fast pace + high total",
-    headshot: "https://cdn.nba.com/headshots/nba/latest/260x190/201939.png",
-  },
-  {
-    player: "LeBron James",
-    team: "LAL",
-    market: "Assists",
-    line: 7.5,
-    game: "Warriors @ Lakers",
-    odds: -105,
-    edge: 6.8,
-    confidence: 100,
-    note: "elite environment + fast pace + high total",
-    headshot: "https://cdn.nba.com/headshots/nba/latest/260x190/2544.png",
-  },
-  {
-    player: "Karl-Anthony Towns",
-    team: "NYK",
-    market: "Rebounds",
-    line: 8.5,
-    game: "Knicks @ Celtics",
-    odds: -105,
-    edge: 6.8,
-    confidence: 100,
-    note: "strong environment + rebound path",
-    headshot: "https://cdn.nba.com/headshots/nba/latest/260x190/1626157.png",
-  },
-];
+  "Las Vegas Aces": "https://a.espncdn.com/i/teamlogos/wnba/500/lv.png",
+  "New York Liberty": "https://a.espncdn.com/i/teamlogos/wnba/500/ny.png",
+  "Indiana Fever": "https://a.espncdn.com/i/teamlogos/wnba/500/ind.png",
+  "Phoenix Mercury": "https://a.espncdn.com/i/teamlogos/wnba/500/phx.png",
+  "Seattle Storm": "https://a.espncdn.com/i/teamlogos/wnba/500/sea.png",
+  "Chicago Sky": "https://a.espncdn.com/i/teamlogos/wnba/500/chi.png",
+};
 
 function cleanSlug(text: string) {
   return text
@@ -123,19 +102,51 @@ function cleanSlug(text: string) {
     .replaceAll(" ", "-");
 }
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString([], {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Time TBD";
+
+  return date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
   });
 }
 
+function formatNumber(value: number | null | undefined, fallback = "—") {
+  if (value === null || value === undefined) return fallback;
+  return value.toFixed(1);
+}
+
+function formatOdds(value: number | null | undefined) {
+  if (value === null || value === undefined) return "—";
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
 function getGrade(environment: number | null) {
-  if (!environment) return "Pending";
+  if (environment === null || environment === undefined) return "N/A";
   if (environment >= 9) return "Elite";
   if (environment >= 8) return "Strong";
   if (environment >= 7) return "Playable";
   return "Neutral";
+}
+
+function getDisplayPace(game: Game) {
+  if (game.pace !== null && game.pace !== undefined) return game.pace.toFixed(1);
+
+  if (game.environment !== null && game.environment !== undefined) {
+    return (96 + game.environment * 0.8).toFixed(1);
+  }
+
+  return "N/A";
 }
 
 function getTeamTotals(game: Game) {
@@ -168,11 +179,6 @@ function getTeamTotals(game: Game) {
   }
 
   return null;
-}
-
-function formatMoneyline(value: number | null | undefined) {
-  if (value == null) return "-";
-  return value > 0 ? `+${value}` : `${value}`;
 }
 
 function streakCount(
@@ -213,7 +219,7 @@ function getPlayerStreakLeaders(
 
       return {
         player,
-        team: recent[0]?.team ?? "NBA",
+        team: recent[0]?.team ?? "HOOPS",
         ...result,
       };
     })
@@ -222,9 +228,47 @@ function getPlayerStreakLeaders(
     .slice(0, 5);
 }
 
+function getHoopEdgeScore(prop: Prop) {
+  const edge = Number(prop.edge ?? 0);
+  const hitRate = Number(prop.hit_rate ?? 0);
+  const confidence = Number(prop.confidence ?? 0);
+
+  return edge * 0.5 + hitRate * 0.3 + confidence * 0.2;
+}
+
+function rankProps(props: Prop[], limit = 3) {
+  return [...props]
+    .filter((prop) => prop.player && prop.market)
+    .map((prop) => ({
+      ...prop,
+      edge: prop.edge ?? 0,
+      hit_rate: prop.hit_rate ?? 0,
+      confidence: prop.confidence ?? 0,
+      score: getHoopEdgeScore(prop),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+}
+
+function uniqueByMatchup(games: Game[]) {
+  const seen = new Set<string>();
+
+  return games.filter((game) => {
+    const key = [game.away_team, game.home_team, game.league ?? "NBA"]
+      .join("-")
+      .toLowerCase();
+
+    if (seen.has(key)) return false;
+
+    seen.add(key);
+    return true;
+  });
+}
+
 export default function Home() {
   const [games, setGames] = useState<Game[]>([]);
   const [stats, setStats] = useState<PlayerStat[]>([]);
+  const [props, setProps] = useState<Prop[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -234,9 +278,17 @@ export default function Home() {
   async function loadPage() {
     setLoading(true);
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
     const { data: gameData } = await supabase
       .from("games")
       .select("*")
+      .gte("game_time", today.toISOString())
+      .lt("game_time", tomorrow.toISOString())
       .order("game_time", { ascending: true });
 
     const { data: statData } = await supabase
@@ -244,42 +296,77 @@ export default function Home() {
       .select("*")
       .order("game_date", { ascending: false });
 
+    const { data: propData, error: propError } = await supabase
+      .from("props")
+      .select("*")
+      .order("updated_at", { ascending: false });
+
+    if (propError) console.error("Props load error:", propError);
+
     setGames((gameData as Game[]) || []);
     setStats((statData as PlayerStat[]) || []);
+    setProps((propData as Prop[]) || []);
     setLoading(false);
   }
 
-  const uniqueGames = useMemo(() => {
-    const seen = new Set<string>();
+  const nbaProps = useMemo(
+    () => props.filter((p) => (p.league ?? "NBA") === "NBA"),
+    [props]
+  );
 
-    return games.filter((game) => {
-      const key = [game.away_team, game.home_team]
-        .sort()
-        .join("-vs-")
-        .toLowerCase();
+  const wnbaProps = useMemo(
+    () => props.filter((p) => p.league === "WNBA"),
+    [props]
+  );
 
-      if (seen.has(key)) return false;
+  const nbaStats = useMemo(
+    () => stats.filter((s) => (s.league ?? "NBA") === "NBA"),
+    [stats]
+  );
 
-      seen.add(key);
-      return true;
-    });
+  const wnbaStats = useMemo(
+    () => stats.filter((s) => s.league === "WNBA"),
+    [stats]
+  );
+
+  const nbaGames = useMemo(() => {
+    return uniqueByMatchup(
+      games.filter((game) => (game.league ?? "NBA") === "NBA")
+    );
   }, [games]);
 
-  const strongest = signals.filter((s) => s.edge >= 10);
-  const positive = signals.filter((s) => s.edge >= 5 && s.edge < 10);
+  const wnbaGames = useMemo(() => {
+    return uniqueByMatchup(games.filter((game) => game.league === "WNBA"));
+  }, [games]);
 
-  const leaderGroups = useMemo(() => {
+  const overallTopPlays = useMemo<RankedProp[]>(
+    () => rankProps(props, 3),
+    [props]
+  );
+
+  const nbaTopPlays = useMemo<RankedProp[]>(
+    () => rankProps(nbaProps, 3),
+    [nbaProps]
+  );
+
+  const wnbaTopPlays = useMemo<RankedProp[]>(
+    () => rankProps(wnbaProps, 3),
+    [wnbaProps]
+  );
+
+  const nbaLeaderGroups = useMemo(() => {
     return [
-      { title: "25+ Points", leaders: getPlayerStreakLeaders(stats, "points", 25) },
-      { title: "20+ Points", leaders: getPlayerStreakLeaders(stats, "points", 20) },
-      { title: "10+ Rebounds", leaders: getPlayerStreakLeaders(stats, "rebounds", 10) },
-      { title: "8+ Rebounds", leaders: getPlayerStreakLeaders(stats, "rebounds", 8) },
-      { title: "6+ Rebounds", leaders: getPlayerStreakLeaders(stats, "rebounds", 6) },
-      { title: "10+ Assists", leaders: getPlayerStreakLeaders(stats, "assists", 10) },
-      { title: "8+ Assists", leaders: getPlayerStreakLeaders(stats, "assists", 8) },
-      { title: "6+ Assists", leaders: getPlayerStreakLeaders(stats, "assists", 6) },
+      { title: "25+ Points", leaders: getPlayerStreakLeaders(nbaStats, "points", 25) },
+      { title: "20+ Points", leaders: getPlayerStreakLeaders(nbaStats, "points", 20) },
     ];
-  }, [stats]);
+  }, [nbaStats]);
+
+  const wnbaLeaderGroups = useMemo(() => {
+    return [
+      { title: "20+ Points", leaders: getPlayerStreakLeaders(wnbaStats, "points", 20) },
+      { title: "8+ Rebounds", leaders: getPlayerStreakLeaders(wnbaStats, "rebounds", 8) },
+    ];
+  }, [wnbaStats]);
 
   if (loading) {
     return (
@@ -291,254 +378,467 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[#050607] px-6 py-8 text-white lg:px-8">
-      <section className="mx-auto grid max-w-[1500px] items-start gap-8 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_400px]">
-        <div className="min-w-0">
-          <h1 className="text-4xl font-black tracking-tight">Today’s Slate</h1>
-          <p className="mt-2 text-zinc-400">
-            Live NBA matchup intelligence, projection signals, and model-driven edges.
-          </p>
+      <section className="mx-auto grid max-w-[1800px] items-start gap-8 xl:grid-cols-[340px_minmax(0,1fr)_360px] 2xl:grid-cols-[380px_minmax(0,1fr)_400px]">
+        <div className="space-y-6 xl:sticky xl:top-8">
+          <TopPlaysPanel
+            title="🔥 Overall Top 3 Today"
+            subtitle="Best plays across NBA and WNBA by HoopEdge Score."
+            plays={overallTopPlays}
+            variant="overall"
+          />
 
-          <section className="mt-8 grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
-            {uniqueGames.map((game) => {
-              const awayLogo = TEAM_LOGOS[game.away_team];
-              const homeLogo = TEAM_LOGOS[game.home_team];
-              const teamTotals = getTeamTotals(game);
-              const hasSpread = game.favorite_team && game.spread != null;
-              const hasMoneyline =
-                game.away_moneyline != null || game.home_moneyline != null;
+          <TopPlaysPanel
+            title="🏀 NBA Top Plays"
+            subtitle="Ranked by NBA edge, hit rate, and confidence."
+            plays={nbaTopPlays}
+            variant="nba"
+          />
 
-              return (
-                <Link
-                  key={game.id}
-                  href={`/game/${game.id}`}
-                  className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition hover:-translate-y-1 hover:border-emerald-500/60"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {awayLogo && (
-                        <img
-                          src={awayLogo}
-                          alt={game.away_team}
-                          className="h-7 w-7 object-contain"
-                        />
-                      )}
-                      {homeLogo && (
-                        <img
-                          src={homeLogo}
-                          alt={game.home_team}
-                          className="h-7 w-7 object-contain"
-                        />
-                      )}
-                    </div>
-
-                    <p className="text-sm text-zinc-300">
-                      {formatTime(game.game_time)}
-                    </p>
-                  </div>
-
-                  <h2 className="font-black">
-                    {game.away_team} @ {game.home_team}
-                  </h2>
-
-                  <p className="mt-3 font-bold">
-                    {game.projected_total ?? "-"} total
-                  </p>
-
-                  <p className="mt-2 text-sm text-zinc-400">
-                    Pace: {game.pace ?? "Pending"}
-                  </p>
-
-                  <p className="text-sm font-bold text-emerald-400">
-                    Environment: {game.environment ?? "-"} •{" "}
-                    {getGrade(game.environment)}
-                  </p>
-
-                  {(hasSpread || teamTotals || hasMoneyline) && (
-                    <div className="mt-4 rounded-xl border border-zinc-800 bg-black/30 p-3">
-                      {hasSpread && (
-                        <p className="text-sm font-bold text-zinc-200">
-                          Spread: {game.favorite_team}{" "}
-                          {Number(game.spread).toFixed(1)}
-                        </p>
-                      )}
-
-                      {teamTotals && (
-                        <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                          <div>
-                            <p className="text-xs text-zinc-500">Away Total</p>
-                            <p className="font-black text-white">
-                              {teamTotals.awayTotal.toFixed(1)}
-                            </p>
-                          </div>
-
-                          <div>
-                            <p className="text-xs text-zinc-500">Home Total</p>
-                            <p className="font-black text-white">
-                              {teamTotals.homeTotal.toFixed(1)}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {hasMoneyline && (
-                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-zinc-400">
-                          <p>
-                            Away ML:{" "}
-                            <span className="font-bold text-zinc-200">
-                              {formatMoneyline(game.away_moneyline)}
-                            </span>
-                          </p>
-                          <p>
-                            Home ML:{" "}
-                            <span className="font-bold text-zinc-200">
-                              {formatMoneyline(game.home_moneyline)}
-                            </span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="mt-4 h-2 rounded-full bg-zinc-800">
-                    <div
-                      className="h-2 rounded-full bg-emerald-400"
-                      style={{
-                        width: `${Math.min((game.environment ?? 0) * 10, 100)}%`,
-                      }}
-                    />
-                  </div>
-                </Link>
-              );
-            })}
-          </section>
-
-          <section className="mt-12">
-            <h2 className="mb-5 font-bold text-emerald-400">
-              Strongest Signals (10%+)
-            </h2>
-
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {strongest.map((signal) => (
-                <SignalCard key={signal.player} signal={signal} />
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-10">
-            <h2 className="mb-5 font-bold text-yellow-400">
-              Positive Signals (5–10%)
-            </h2>
-
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {positive.map((signal) => (
-                <SignalCard key={signal.player} signal={signal} />
-              ))}
-            </div>
-          </section>
+          <TopPlaysPanel
+            title="🧡 WNBA Top Plays"
+            subtitle="Pastel-orange lane for women’s hoops signals."
+            plays={wnbaTopPlays}
+            variant="wnba"
+          />
         </div>
 
-        <aside className="w-full rounded-2xl border border-orange-500/80 bg-zinc-950 shadow-2xl shadow-orange-950/20 xl:sticky xl:top-8">
-          <div className="border-b border-zinc-800 p-5">
-            <p className="text-xs font-bold uppercase tracking-wide text-emerald-400">
-              Player Trends
+        <div className="min-w-0">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.35em] text-emerald-400">
+              HoopEdge
             </p>
 
-            <h2 className="mt-1 text-2xl font-black">Streak Leaders</h2>
+            <h1 className="mt-2 text-5xl font-black tracking-tight">
+              Today’s Slate
+            </h1>
 
-            <p className="mt-2 text-sm leading-5 text-zinc-400">
-              Top recent hit-rate leaders by stat threshold.
+            <p className="mt-3 text-lg text-zinc-400">
+              Live matchup intelligence, projection signals, and model-driven edges across hoops.
             </p>
           </div>
 
-          <div className="max-h-[680px] space-y-4 overflow-y-auto p-4">
-            {leaderGroups.map((group) => (
-              <div
-                key={group.title}
-                className="rounded-xl border border-zinc-800 bg-zinc-900/90 p-4"
-              >
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="font-black">{group.title}</h3>
+          <SlateSection title="NBA Slate" games={nbaGames} variant="nba" />
+          <SlateSection title="WNBA Slate" games={wnbaGames} variant="wnba" />
+        </div>
 
-                  <span className="shrink-0 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300">
-                    Top 5
-                  </span>
-                </div>
+        <div className="space-y-6 xl:sticky xl:top-8">
+          <StreakPanel
+            title="NBA Streak Leaders"
+            subtitle="Top recent NBA hit-rate leaders by stat threshold."
+            groups={nbaLeaderGroups}
+            variant="nba"
+          />
 
-                <div className="space-y-2">
-                  {group.leaders.map((leader, index) => (
-                    <Link
-                      key={`${group.title}-${leader.player}`}
-                      href={`/players/${cleanSlug(leader.player)}`}
-                      className="block rounded-lg p-2 transition hover:bg-emerald-500/10"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-black">
-                            {index + 1}. {leader.player}
-                          </p>
-                          <p className="text-xs text-zinc-500">{leader.team}</p>
-                        </div>
-
-                        <div className="shrink-0 text-right">
-                          <p className="text-sm font-black">
-                            {leader.hit}/{leader.total}
-                          </p>
-                          <p className="text-xs font-bold text-emerald-400">
-                            {leader.pct}%
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-
-                  {group.leaders.length === 0 && (
-                    <p className="text-sm text-zinc-500">
-                      No data available yet.
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
+          <StreakPanel
+            title="WNBA Streak Leaders"
+            subtitle="Women’s hoops trend board with orange-pastel styling."
+            groups={wnbaLeaderGroups}
+            variant="wnba"
+          />
+        </div>
       </section>
     </main>
   );
 }
 
-function SignalCard({ signal }: { signal: Signal }) {
+function SlateSection({
+  title,
+  games,
+  variant,
+}: {
+  title: string;
+  games: Game[];
+  variant: "nba" | "wnba";
+}) {
+  const isWnba = variant === "wnba";
+
+  return (
+    <section className="mt-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className={`text-xl font-black ${isWnba ? "text-orange-300" : "text-emerald-400"}`}>
+          {title}
+        </h2>
+
+        <span className={`rounded-full border px-3 py-1 text-xs font-black ${
+          isWnba
+            ? "border-orange-300/40 bg-orange-300/10 text-orange-200"
+            : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+        }`}>
+          {games.length} Games
+        </span>
+      </div>
+
+      {games.length > 0 ? (
+        <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+          {games.map((game) => (
+            <GameCard key={game.id} game={game} isWnba={isWnba} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6 text-sm text-zinc-500">
+          No {title} games loaded for today.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GameCard({
+  game,
+  isWnba = false,
+}: {
+  game: Game;
+  isWnba?: boolean;
+}) {
+  const awayLogo = TEAM_LOGOS[game.away_team];
+  const homeLogo = TEAM_LOGOS[game.home_team];
+  const teamTotals = getTeamTotals(game);
+  const hasSpread = game.favorite_team && game.spread != null;
+  const hasMoneyline =
+    game.away_moneyline != null || game.home_moneyline != null;
+
   return (
     <Link
-      href={`/players/${cleanSlug(signal.player)}`}
-      className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition hover:-translate-y-1 hover:border-blue-500/60"
+      href={`/game/${game.id}`}
+      className={`group rounded-3xl border bg-zinc-900/80 p-6 shadow-xl transition duration-300 hover:-translate-y-1 hover:bg-zinc-900 ${
+        isWnba
+          ? "border-zinc-800 hover:border-orange-300/70 hover:shadow-orange-500/10"
+          : "border-zinc-800 hover:border-emerald-500 hover:shadow-emerald-950/30"
+      }`}
     >
-      <div className="flex justify-between gap-4">
-        <div>
-          <h3 className="font-black">{signal.player}</h3>
-          <p className="mt-2 text-sm text-zinc-400">
-            {signal.team} • {signal.market} {signal.line}
-          </p>
-          <p className="mt-1 text-sm text-zinc-500">{signal.game}</p>
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {awayLogo ? (
+            <img src={awayLogo} alt={game.away_team} className="h-8 w-8 object-contain transition group-hover:scale-110" />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-black">
+              {initials(game.away_team)}
+            </div>
+          )}
+
+          {homeLogo ? (
+            <img src={homeLogo} alt={game.home_team} className="h-8 w-8 object-contain transition group-hover:scale-110" />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-black">
+              {initials(game.home_team)}
+            </div>
+          )}
         </div>
 
-        <img
-          src={signal.headshot}
-          alt={signal.player}
-          className="h-16 w-16 rounded-full object-cover object-top"
+        <p className="text-sm font-bold text-zinc-300">
+          {formatTime(game.game_time)}
+        </p>
+      </div>
+
+      <div className="mb-2">
+        <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wide ${
+          isWnba
+            ? "bg-orange-300/15 text-orange-200"
+            : "bg-emerald-500/15 text-emerald-300"
+        }`}>
+          {isWnba ? "WNBA" : "NBA"}
+        </span>
+      </div>
+
+      <h2 className="text-xl font-black leading-tight">
+        {game.away_team} @ {game.home_team}
+      </h2>
+
+      <p className="mt-4 text-2xl font-black">
+        {formatNumber(game.projected_total)} total
+      </p>
+
+      <p className="mt-3 text-base text-zinc-400">
+        Pace: <span className="font-bold text-zinc-200">{getDisplayPace(game)}</span>
+      </p>
+
+      <p className={`text-base font-black ${isWnba ? "text-orange-300" : "text-emerald-400"}`}>
+        Environment: {formatNumber(game.environment)} • {getGrade(game.environment)}
+      </p>
+
+      {(hasSpread || teamTotals || hasMoneyline) && (
+        <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/30 p-4">
+          {hasSpread && (
+            <p className="text-base font-black text-zinc-100">
+              Spread: {game.favorite_team} {Number(game.spread).toFixed(1)}
+            </p>
+          )}
+
+          {teamTotals && (
+            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-zinc-500">Away Total</p>
+                <p className="text-lg font-black text-white">{teamTotals.awayTotal.toFixed(1)}</p>
+              </div>
+
+              <div>
+                <p className="text-zinc-500">Home Total</p>
+                <p className="text-lg font-black text-white">{teamTotals.homeTotal.toFixed(1)}</p>
+              </div>
+            </div>
+          )}
+
+          {hasMoneyline && (
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-zinc-400">
+              <p>
+                Away ML: <span className="font-black text-zinc-200">{formatOdds(game.away_moneyline)}</span>
+              </p>
+
+              <p>
+                Home ML: <span className="font-black text-zinc-200">{formatOdds(game.home_moneyline)}</span>
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-5 h-2 rounded-full bg-zinc-800">
+        <div
+          className={`h-2 rounded-full transition-all ${isWnba ? "bg-orange-300" : "bg-emerald-400"}`}
+          style={{
+            width: `${Math.min((game.environment ?? 0) * 10, 100)}%`,
+          }}
         />
       </div>
 
-      <p className="mt-4 text-sm text-blue-400">Odds: {signal.odds}</p>
-
-      <p className="mt-2 font-black text-emerald-400">
-        +{signal.edge}% Edge
+      <p className={`mt-4 text-sm font-bold opacity-0 transition group-hover:opacity-100 ${
+        isWnba ? "text-orange-300" : "text-emerald-400"
+      }`}>
+        View game breakdown →
       </p>
-
-      <p className="mt-2 text-sm text-zinc-300">
-        Confidence: {signal.confidence}
-      </p>
-
-      <p className="mt-3 text-sm leading-5 text-zinc-300">{signal.note}</p>
     </Link>
+  );
+}
+
+function TopPlaysPanel({
+  title,
+  subtitle,
+  plays,
+  variant,
+}: {
+  title: string;
+  subtitle: string;
+  plays: RankedProp[];
+  variant: "overall" | "nba" | "wnba";
+}) {
+  const isWnba = variant === "wnba";
+  const isOverall = variant === "overall";
+
+  const borderStyle = isOverall
+    ? "border border-cyan-400/70 shadow-cyan-950/20"
+    : isWnba
+    ? "border border-orange-300/80 shadow-orange-500/10"
+    : "border border-emerald-500/80 shadow-emerald-950/20";
+
+  const accentText = isOverall
+    ? "text-cyan-300"
+    : isWnba
+    ? "text-orange-300"
+    : "text-emerald-400";
+
+  return (
+    <aside className={`w-full rounded-3xl bg-zinc-950 shadow-2xl ${borderStyle}`}>
+      <div className="border-b border-zinc-800 p-5">
+        <p className={`text-xs font-bold uppercase tracking-wide ${accentText}`}>
+          Auto-Ranked
+        </p>
+
+        <h2 className="mt-1 text-2xl font-black">{title}</h2>
+
+        <p className="mt-2 text-sm leading-5 text-zinc-400">{subtitle}</p>
+      </div>
+
+      <div className="space-y-4 p-4">
+        {plays.length > 0 ? (
+          plays.map((play, index) => {
+  const playIsWnba = play.league === "WNBA";
+
+  return (
+    <Link
+      key={`${play.player}-${play.market}-${index}`}
+      href={play.game_id ? `/game/${play.game_id}` : "#"}
+      className={`block rounded-2xl border bg-zinc-900/90 p-4 transition hover:-translate-y-1 hover:bg-zinc-900 ${
+        playIsWnba
+          ? "border-orange-200/20 hover:border-orange-300/70"
+          : "border-zinc-800 hover:border-emerald-500/60"
+      }`}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-black ${
+            playIsWnba
+              ? "bg-orange-300/20 text-orange-200"
+              : "bg-emerald-500/20 text-emerald-400"
+          }`}
+        >
+          #{index + 1}
+        </span>
+
+        <span
+          className={`rounded-full px-3 py-1 text-xs font-black ${
+            playIsWnba
+              ? "bg-orange-300/15 text-orange-200"
+              : "bg-emerald-500/15 text-emerald-300"
+          }`}
+        >
+          {play.league || "NBA"}
+        </span>
+      </div>
+
+      <h3 className="text-lg font-black">{play.player}</h3>
+
+      <p className="mt-1 text-sm text-zinc-400">
+        {play.team || "HOOPS"} • {play.market} {play.line ?? "—"}
+      </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <MiniStat label="Odds" value={formatOdds(play.odds)} />
+        <MiniStat
+          label="Edge"
+          value={`${formatNumber(play.edge)}%`}
+          accent={playIsWnba ? "text-orange-200" : "text-emerald-400"}
+        />
+        <MiniStat
+          label="Hit Rate"
+          value={`${formatNumber(play.hit_rate)}%`}
+          accent={playIsWnba ? "text-orange-200" : "text-emerald-400"}
+        />
+        <MiniStat
+          label="Score"
+          value={play.score.toFixed(1)}
+          accent={playIsWnba ? "text-orange-200" : "text-emerald-400"}
+        />
+      </div>
+
+      {play.note && (
+        <p className="mt-3 text-sm leading-5 text-zinc-400">
+          {play.note}
+        </p>
+      )}
+    </Link>
+  );
+})
+        ) : (
+          <p className="text-sm text-zinc-500">No props available yet.</p>
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  accent = "text-white",
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+}) {
+  return (
+    <div>
+      <p className="text-zinc-500">{label}</p>
+      <p className={`font-black ${accent}`}>{value}</p>
+    </div>
+  );
+}
+
+function StreakPanel({
+  title,
+  subtitle,
+  groups,
+  variant,
+}: {
+  title: string;
+  subtitle: string;
+  groups: {
+    title: string;
+    leaders: {
+      player: string;
+      team: string;
+      hit: number;
+      total: number;
+      pct: number;
+    }[];
+  }[];
+  variant: "nba" | "wnba";
+}) {
+  const isWnba = variant === "wnba";
+
+  return (
+    <aside className={`w-full rounded-3xl bg-zinc-950 shadow-2xl ${
+      isWnba
+        ? "border border-orange-300/80 shadow-orange-500/10"
+        : "border border-orange-500/80 shadow-orange-950/20"
+    }`}>
+      <div className="border-b border-zinc-800 p-5">
+        <p className={`text-xs font-bold uppercase tracking-wide ${
+          isWnba ? "text-orange-300" : "text-emerald-400"
+        }`}>
+          Player Trends
+        </p>
+
+        <h2 className="mt-1 text-2xl font-black">{title}</h2>
+
+        <p className="mt-2 text-sm leading-5 text-zinc-400">{subtitle}</p>
+      </div>
+
+      <div className="max-h-[420px] space-y-4 overflow-y-auto p-4">
+        {groups.map((group) => (
+          <div
+            key={group.title}
+            className="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-4"
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h3 className="font-black">{group.title}</h3>
+
+              <span className={`shrink-0 rounded-full border px-3 py-1 text-xs font-bold ${
+                isWnba
+                  ? "border-orange-300/40 bg-orange-300/10 text-orange-200"
+                  : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+              }`}>
+                Top 5
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {group.leaders.map((leader, index) => (
+                <Link
+                  key={`${group.title}-${leader.player}`}
+                  href={`/players/${cleanSlug(leader.player)}`}
+                  className={`block rounded-xl p-2 transition ${
+                    isWnba ? "hover:bg-orange-300/10" : "hover:bg-emerald-500/10"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black">
+                        {index + 1}. {leader.player}
+                      </p>
+                      <p className="text-xs text-zinc-500">{leader.team}</p>
+                    </div>
+
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-black">
+                        {leader.hit}/{leader.total}
+                      </p>
+                      <p className={`text-xs font-bold ${
+                        isWnba ? "text-orange-200" : "text-emerald-400"
+                      }`}>
+                        {leader.pct}%
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+
+              {group.leaders.length === 0 && (
+                <p className="text-sm text-zinc-500">No data available yet.</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </aside>
   );
 }

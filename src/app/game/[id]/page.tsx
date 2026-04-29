@@ -13,254 +13,272 @@ type Game = {
   projected_total: number | null;
   pace: number | null;
   environment: number | null;
+  favorite_team?: string | null;
+  spread?: number | null;
+  home_moneyline?: number | null;
+  away_moneyline?: number | null;
+  home_team_total?: number | null;
+  away_team_total?: number | null;
+  league?: string | null;
 };
 
 type Prop = {
-  id: string;
-  game_id: string;
+  id?: string;
   player: string;
   team: string | null;
   market: string;
-  line: number;
-  odds: number;
-  book: string;
-  implied_prob: number | null;
-  model_prob: number | null;
+  line: number | null;
+  odds: number | null;
   edge: number | null;
+  confidence?: number | null;
+  hit_rate?: number | null;
+  note?: string | null;
+  league?: string | null;
+  game_id?: string | null;
 };
 
-type PlayerStat = {
-  id: string;
-  player: string;
-  team: string | null;
-  game_date: string;
-  opponent: string | null;
-  points: number | null;
-  rebounds: number | null;
-  assists: number | null;
-  threes: number | null;
+type RankedProp = Prop & {
+  score: number;
 };
 
 const TEAM_LOGOS: Record<string, string> = {
-  "Detroit Pistons": "https://cdn.nba.com/logos/nba/1610612765/primary/L/logo.svg",
-  "Orlando Magic": "https://cdn.nba.com/logos/nba/1610612753/primary/L/logo.svg",
-  "Oklahoma City Thunder": "https://cdn.nba.com/logos/nba/1610612760/primary/L/logo.svg",
-  "Phoenix Suns": "https://cdn.nba.com/logos/nba/1610612756/primary/L/logo.svg",
-  "New York Knicks": "https://cdn.nba.com/logos/nba/1610612752/primary/L/logo.svg",
-  "Atlanta Hawks": "https://cdn.nba.com/logos/nba/1610612737/primary/L/logo.svg",
-  "Denver Nuggets": "https://cdn.nba.com/logos/nba/1610612743/primary/L/logo.svg",
-  "Minnesota Timberwolves": "https://cdn.nba.com/logos/nba/1610612750/primary/L/logo.svg",
-  "Cleveland Cavaliers": "https://cdn.nba.com/logos/nba/1610612739/primary/L/logo.svg",
-  "Toronto Raptors": "https://cdn.nba.com/logos/nba/1610612761/primary/L/logo.svg",
-  "San Antonio Spurs": "https://cdn.nba.com/logos/nba/1610612759/primary/L/logo.svg",
-  "Portland Trail Blazers": "https://cdn.nba.com/logos/nba/1610612757/primary/L/logo.svg",
-  "Boston Celtics": "https://cdn.nba.com/logos/nba/1610612738/primary/L/logo.svg",
-  "Philadelphia 76ers": "https://cdn.nba.com/logos/nba/1610612755/primary/L/logo.svg",
-  "Los Angeles Lakers": "https://cdn.nba.com/logos/nba/1610612747/primary/L/logo.svg",
-  "Houston Rockets": "https://cdn.nba.com/logos/nba/1610612745/primary/L/logo.svg",
+  "Atlanta Hawks": "https://a.espncdn.com/i/teamlogos/nba/500/atl.png",
+  "Boston Celtics": "https://a.espncdn.com/i/teamlogos/nba/500/bos.png",
+  "Brooklyn Nets": "https://a.espncdn.com/i/teamlogos/nba/500/bkn.png",
+  "Charlotte Hornets": "https://a.espncdn.com/i/teamlogos/nba/500/cha.png",
+  "Chicago Bulls": "https://a.espncdn.com/i/teamlogos/nba/500/chi.png",
+  "Cleveland Cavaliers": "https://a.espncdn.com/i/teamlogos/nba/500/cle.png",
+  "Dallas Mavericks": "https://a.espncdn.com/i/teamlogos/nba/500/dal.png",
+  "Denver Nuggets": "https://a.espncdn.com/i/teamlogos/nba/500/den.png",
+  "Detroit Pistons": "https://a.espncdn.com/i/teamlogos/nba/500/det.png",
+  "Golden State Warriors": "https://a.espncdn.com/i/teamlogos/nba/500/gs.png",
+  "Houston Rockets": "https://a.espncdn.com/i/teamlogos/nba/500/hou.png",
+  "Indiana Pacers": "https://a.espncdn.com/i/teamlogos/nba/500/ind.png",
+  "LA Clippers": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+  "Los Angeles Clippers": "https://a.espncdn.com/i/teamlogos/nba/500/lac.png",
+  "Los Angeles Lakers": "https://a.espncdn.com/i/teamlogos/nba/500/lal.png",
+  "Memphis Grizzlies": "https://a.espncdn.com/i/teamlogos/nba/500/mem.png",
+  "Miami Heat": "https://a.espncdn.com/i/teamlogos/nba/500/mia.png",
+  "Milwaukee Bucks": "https://a.espncdn.com/i/teamlogos/nba/500/mil.png",
+  "Minnesota Timberwolves": "https://a.espncdn.com/i/teamlogos/nba/500/min.png",
+  "New Orleans Pelicans": "https://a.espncdn.com/i/teamlogos/nba/500/no.png",
+  "New York Knicks": "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+  "Oklahoma City Thunder": "https://a.espncdn.com/i/teamlogos/nba/500/okc.png",
+  "Orlando Magic": "https://a.espncdn.com/i/teamlogos/nba/500/orl.png",
+  "Philadelphia 76ers": "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+  "Phoenix Suns": "https://a.espncdn.com/i/teamlogos/nba/500/phx.png",
+  "Portland Trail Blazers": "https://a.espncdn.com/i/teamlogos/nba/500/por.png",
+  "Sacramento Kings": "https://a.espncdn.com/i/teamlogos/nba/500/sac.png",
+  "San Antonio Spurs": "https://a.espncdn.com/i/teamlogos/nba/500/sa.png",
+  "Toronto Raptors": "https://a.espncdn.com/i/teamlogos/nba/500/tor.png",
+  "Utah Jazz": "https://a.espncdn.com/i/teamlogos/nba/500/utah.png",
+  "Washington Wizards": "https://a.espncdn.com/i/teamlogos/nba/500/wsh.png",
+
+  "Las Vegas Aces": "https://a.espncdn.com/i/teamlogos/wnba/500/lv.png",
+  "New York Liberty": "https://a.espncdn.com/i/teamlogos/wnba/500/ny.png",
+  "Indiana Fever": "https://a.espncdn.com/i/teamlogos/wnba/500/ind.png",
+  "Phoenix Mercury": "https://a.espncdn.com/i/teamlogos/wnba/500/phx.png",
+  "Seattle Storm": "https://a.espncdn.com/i/teamlogos/wnba/500/sea.png",
+  "Chicago Sky": "https://a.espncdn.com/i/teamlogos/wnba/500/chi.png",
 };
 
-const TEAM_SHORT: Record<string, string> = {
-  "New York Knicks": "NYK",
-  "Los Angeles Lakers": "LAL",
-  "Boston Celtics": "BOS",
-  "Golden State Warriors": "GSW",
+const TEAM_MAP: Record<string, string> = {
   "Atlanta Hawks": "ATL",
-  "Detroit Pistons": "DET",
-  "Orlando Magic": "ORL",
-  "Oklahoma City Thunder": "OKC",
-  "Phoenix Suns": "PHX",
-  "Denver Nuggets": "DEN",
-  "Minnesota Timberwolves": "MIN",
+  "Boston Celtics": "BOS",
+  "Brooklyn Nets": "BKN",
+  "Charlotte Hornets": "CHA",
+  "Chicago Bulls": "CHI",
   "Cleveland Cavaliers": "CLE",
-  "Toronto Raptors": "TOR",
-  "San Antonio Spurs": "SAS",
-  "Portland Trail Blazers": "POR",
-  "Philadelphia 76ers": "PHI",
+  "Dallas Mavericks": "DAL",
+  "Denver Nuggets": "DEN",
+  "Detroit Pistons": "DET",
+  "Golden State Warriors": "GSW",
   "Houston Rockets": "HOU",
+  "Indiana Pacers": "IND",
+  "LA Clippers": "LAC",
+  "Los Angeles Clippers": "LAC",
+  "Los Angeles Lakers": "LAL",
+  "Memphis Grizzlies": "MEM",
+  "Miami Heat": "MIA",
+  "Milwaukee Bucks": "MIL",
+  "Minnesota Timberwolves": "MIN",
+  "New Orleans Pelicans": "NOP",
+  "New York Knicks": "NYK",
+  "Oklahoma City Thunder": "OKC",
+  "Orlando Magic": "ORL",
+  "Philadelphia 76ers": "PHI",
+  "Phoenix Suns": "PHX",
+  "Portland Trail Blazers": "POR",
+  "Sacramento Kings": "SAC",
+  "San Antonio Spurs": "SAS",
+  "Toronto Raptors": "TOR",
+  "Utah Jazz": "UTA",
+  "Washington Wizards": "WAS",
+
+  "Las Vegas Aces": "LVA",
+  "New York Liberty": "NYL",
+  "Indiana Fever": "IND",
+  "Phoenix Mercury": "PHX",
+  "Seattle Storm": "SEA",
+  "Chicago Sky": "CHI",
 };
 
-function cleanSlug(text: string) {
-  return text
-    .toLowerCase()
-    .replaceAll(".", "")
-    .replaceAll("'", "")
-    .replaceAll("’", "")
-    .replaceAll(",", "")
-    .replaceAll(" ", "-");
-}
+const PLAYER_HEADSHOTS: Record<string, string> = {
+  "LeBron James": "https://cdn.nba.com/headshots/nba/latest/1040x760/2544.png",
+  "Anthony Davis": "https://cdn.nba.com/headshots/nba/latest/1040x760/203076.png",
+  "Jalen Brunson": "https://cdn.nba.com/headshots/nba/latest/1040x760/1628973.png",
+  "Luka Doncic": "https://cdn.nba.com/headshots/nba/latest/1040x760/1629029.png",
+  "Jayson Tatum": "https://cdn.nba.com/headshots/nba/latest/1040x760/1628369.png",
+};
 
 function formatTime(value: string) {
-  return new Date(value).toLocaleTimeString([], {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Time TBD";
+
+  return date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
   });
 }
 
-function formatOdds(odds: number) {
-  return odds > 0 ? `+${odds}` : `${odds}`;
+function formatNumber(value: number | null | undefined, fallback = "—") {
+  if (value === null || value === undefined) return fallback;
+  return value.toFixed(1);
 }
 
-function getGrade(environment: number | null) {
-  if (!environment) return "Pending";
-  if (environment >= 9) return "Elite";
-  if (environment >= 8) return "Strong";
-  if (environment >= 7) return "Playable";
+function formatOdds(value: number | null | undefined) {
+  if (value === null || value === undefined) return "—";
+  return value > 0 ? `+${value}` : `${value}`;
+}
+
+function environmentLabel(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Not Available";
+  if (value >= 8.3) return "Strong";
+  if (value >= 7.5) return "Playable";
   return "Neutral";
 }
 
-function getGradeColor(environment: number | null) {
-  if (!environment) return "text-zinc-400";
-  if (environment >= 9) return "text-emerald-400";
-  if (environment >= 8) return "text-green-400";
-  if (environment >= 7) return "text-blue-400";
-  return "text-zinc-400";
+function edgeLabel(value: number | null | undefined) {
+  if (value === null || value === undefined) return "Watch";
+  if (value >= 7.5) return "Strong Edge";
+  if (value >= 5) return "Playable";
+  return "Lean";
 }
 
-function getStat(log: PlayerStat, market: string) {
-  const m = market.toLowerCase();
-
-  if (m.includes("pra")) {
-    return (log.points ?? 0) + (log.rebounds ?? 0) + (log.assists ?? 0);
-  }
-
-  if (m.includes("point")) return log.points ?? 0;
-  if (m.includes("rebound")) return log.rebounds ?? 0;
-  if (m.includes("assist")) return log.assists ?? 0;
-  if (m.includes("3pm") || m.includes("three")) return log.threes ?? 0;
-
-  return 0;
+function getScore(prop: Prop) {
+  return (
+    Number(prop.edge ?? 0) * 0.5 +
+    Number(prop.hit_rate ?? 0) * 0.3 +
+    Number(prop.confidence ?? 0) * 0.2
+  );
 }
 
-function calcEdge(avg: number, line: number) {
-  if (!line || line <= 0) return null;
-  return ((avg - line) / line) * 100;
+function playerImageUrl(player: string) {
+  return PLAYER_HEADSHOTS[player] || "";
 }
 
-function signalTier(edge: number | null) {
-  if (edge === null) return "Pending";
-  if (edge >= 50) return "Elite";
-  if (edge >= 20) return "Strong";
-  if (edge >= 5) return "Lean";
-  if (edge > -5) return "Neutral";
-  return "Fade";
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 }
 
-function signalColor(edge: number | null) {
-  if (edge === null) return "text-zinc-400";
-  if (edge >= 50) return "text-emerald-400";
-  if (edge >= 20) return "text-green-400";
-  if (edge >= 5) return "text-yellow-400";
-  if (edge > -5) return "text-zinc-300";
-  return "text-red-400";
-}
-
-function signalBadge(edge: number | null) {
-  if (edge === null) return "border-zinc-700 bg-zinc-900 text-zinc-300";
-  if (edge >= 50) return "border-emerald-500/40 bg-emerald-500/10 text-emerald-300";
-  if (edge >= 20) return "border-green-500/40 bg-green-500/10 text-green-300";
-  if (edge >= 5) return "border-yellow-500/40 bg-yellow-500/10 text-yellow-300";
-  if (edge > -5) return "border-zinc-700 bg-zinc-900 text-zinc-300";
-  return "border-red-500/40 bg-red-500/10 text-red-300";
-}
-
-export default function GamePage() {
+export default function GameDetailPage() {
   const params = useParams();
-  const id = Array.isArray(params.id) ? params.id[0] : params.id;
+  const gameId = params?.id as string;
 
   const [game, setGame] = useState<Game | null>(null);
   const [props, setProps] = useState<Prop[]>([]);
-  const [stats, setStats] = useState<PlayerStat[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    async function loadGame() {
+      if (!gameId) return;
+
+      setLoading(true);
+
+      const { data: gameData, error: gameError } = await supabase
+        .from("games")
+        .select("*")
+        .eq("id", gameId)
+        .single();
+
+      if (gameError || !gameData) {
+        console.error("Game load error:", gameError);
+        setGame(null);
+        setLoading(false);
+        return;
+      }
+
+      setGame(gameData);
+
+      const teams = [
+        gameData.away_team,
+        gameData.home_team,
+        TEAM_MAP[gameData.away_team],
+        TEAM_MAP[gameData.home_team],
+      ].filter(Boolean);
+
+const { data: propData, error: propError } = await supabase
+  .from("props")
+  .select("*")
+  .eq("game_id", gameData.id)
+  .order("edge", { ascending: false });
+
+      if (propError) {
+        console.error("Props load error:", propError);
+
+        const { data: fallbackProps } = await supabase
+          .from("props")
+          .select("*")
+          .in("team", teams)
+          .order("edge", { ascending: false });
+
+        setProps((fallbackProps as Prop[]) || []);
+      } else {
+        setProps((propData as Prop[]) || []);
+      }
+
+      setLoading(false);
+    }
+
     loadGame();
-  }, [id]);
+  }, [gameId]);
 
-  async function loadGame() {
-    setLoading(true);
+  const isWnba = game?.league === "WNBA";
 
-    const { data: gameData } = await supabase
-      .from("games")
-      .select("*")
-      .eq("id", id)
-      .single();
-
-    const { data: propData } = await supabase
-      .from("props")
-      .select("*")
-      .eq("game_id", id)
-      .order("player", { ascending: true });
-
-    const { data: statData } = await supabase
-      .from("player_stats")
-      .select("*")
-      .order("game_date", { ascending: false });
-
-    setGame((gameData as Game) || null);
-    setProps((propData as Prop[]) || []);
-    setStats((statData as PlayerStat[]) || []);
-    setLoading(false);
-  }
-
-  const enrichedProps = useMemo(() => {
-    return props
-      .map((prop) => {
-        const playerLogs = stats
-          .filter((log) => cleanSlug(log.player) === cleanSlug(prop.player))
-          .slice(0, 10);
-
-        const values = playerLogs.map((log) => getStat(log, prop.market));
-        const avg =
-          values.length > 0
-            ? Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1))
-            : 0;
-
-        const hits = values.filter((value) => value >= prop.line).length;
-        const pct = values.length ? Math.round((hits / values.length) * 100) : 0;
-        const calculatedEdge = calcEdge(avg, prop.line);
-
-        return {
-          ...prop,
-          recentAvg: avg,
-          hits,
-          total: values.length,
-          pct,
-          calculatedEdge,
-        };
-      })
-      .sort((a, b) => (b.calculatedEdge ?? -999) - (a.calculatedEdge ?? -999));
-  }, [props, stats]);
-
-  const topSignals = enrichedProps.slice(0, 5);
-
-  const bestScoring = enrichedProps.find((p) =>
-    p.market.toLowerCase().includes("point")
-  );
-
-  const bestRebounding = enrichedProps.find((p) =>
-    p.market.toLowerCase().includes("rebound")
-  );
-
-  const bestAssisting = enrichedProps.find((p) =>
-    p.market.toLowerCase().includes("assist")
-  );
+  const bestBets = useMemo<RankedProp[]>(() => {
+    return [...props]
+      .filter((prop) => prop.player && prop.market)
+      .map((prop) => ({
+        ...prop,
+        edge: prop.edge ?? 0,
+        hit_rate: prop.hit_rate ?? 0,
+        confidence: prop.confidence ?? 0,
+        score: getScore(prop),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6);
+  }, [props]);
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#050607] p-8 text-white">
-        Loading game intelligence...
+      <main className="min-h-screen bg-black px-6 py-10 text-white">
+        <p className="text-zinc-400">Loading game breakdown...</p>
       </main>
     );
   }
 
   if (!game) {
     return (
-      <main className="min-h-screen bg-[#050607] p-8 text-white">
-        <Link href="/" className="text-blue-400 hover:text-blue-300">
-          ← Back to Today’s Slate
+      <main className="min-h-screen bg-black px-6 py-10 text-white">
+        <Link href="/" className="text-emerald-400 hover:text-emerald-300">
+          ← Back to slate
         </Link>
-        <h1 className="mt-6 text-3xl font-black">Game not found</h1>
+        <h1 className="mt-8 text-4xl font-black">Game not found</h1>
       </main>
     );
   }
@@ -268,365 +286,283 @@ export default function GamePage() {
   const awayLogo = TEAM_LOGOS[game.away_team];
   const homeLogo = TEAM_LOGOS[game.home_team];
 
+  const accentText = isWnba ? "text-orange-300" : "text-emerald-400";
+  const accentSoftText = isWnba ? "text-orange-200" : "text-emerald-400";
+  const accentBorder = isWnba ? "border-orange-300/60" : "border-emerald-500/60";
+  const accentBg = isWnba ? "bg-orange-300/10" : "bg-emerald-500/10";
+  const accentShadow = isWnba ? "shadow-orange-500/10" : "shadow-emerald-950/20";
+
   return (
-    <main className="min-h-screen bg-[#050607] px-8 py-8 text-white">
-      <section className="mx-auto max-w-7xl">
-        <Link href="/" className="text-blue-400 hover:text-blue-300">
+    <main className="min-h-screen bg-black px-6 py-8 text-white">
+      <div className="mx-auto max-w-7xl">
+        <Link
+          href="/"
+          className={`text-sm font-bold ${
+            isWnba
+              ? "text-orange-300 hover:text-orange-200"
+              : "text-emerald-400 hover:text-emerald-300"
+          }`}
+        >
           ← Back to Today’s Slate
         </Link>
 
-        <section className="mt-8 overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-          <div className="flex flex-wrap items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              {awayLogo && (
-                <img
-                  src={awayLogo}
-                  alt={game.away_team}
-                  className="h-16 w-16 object-contain"
-                />
-              )}
+        <section
+          className={`mt-8 rounded-[2rem] border bg-zinc-950 p-6 shadow-2xl ${
+            isWnba ? "border-orange-300/40" : "border-zinc-800"
+          } ${accentShadow}`}
+        >
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="flex items-center gap-4">
+                {awayLogo ? (
+                  <img
+                    src={awayLogo}
+                    alt={game.away_team}
+                    className="h-12 w-12 object-contain"
+                  />
+                ) : (
+                  <LogoFallback name={game.away_team} isWnba={isWnba} />
+                )}
 
-              <div>
-                <p className="text-sm text-zinc-400">
-                  {formatTime(game.game_time)} • Game Intelligence
-                </p>
-
-                <h1 className="mt-1 text-4xl font-black tracking-tight">
-                  {game.away_team} @ {game.home_team}
-                </h1>
-
-                <p className="mt-2 text-zinc-400">
-                  Matchup context, player trends, performance signals, and market comparison.
-                </p>
-              </div>
-
-              {homeLogo && (
-                <img
-                  src={homeLogo}
-                  alt={game.home_team}
-                  className="h-16 w-16 object-contain"
-                />
-              )}
-            </div>
-
-            <div className="rounded-full border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-bold">
-              Grade:{" "}
-              <span className={getGradeColor(game.environment)}>
-                {getGrade(game.environment)}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        <section className="mt-8 grid gap-5 md:grid-cols-4">
-          <StatCard label="Projected Total" value={game.projected_total ?? "-"} />
-          <StatCard label="Pace" value={game.pace ?? "Pending"} />
-          <StatCard
-            label="Environment"
-            value={game.environment ?? "-"}
-            valueClass={getGradeColor(game.environment)}
-          />
-          <StatCard label="Live Props" value={props.length} />
-        </section>
-
-        <section className="mt-8 overflow-hidden rounded-2xl border border-blue-500/40 bg-blue-500/10">
-          <div className="border-b border-blue-500/20 p-5">
-            <p className="text-xs font-bold uppercase tracking-wide text-blue-300">
-              Game Intelligence Engine
-            </p>
-            <h2 className="mt-1 text-2xl font-black">Environment Read</h2>
-            <p className="mt-2 max-w-4xl text-sm leading-6 text-zinc-300">
-              This game currently grades as{" "}
-              <span className={`font-bold ${getGradeColor(game.environment)}`}>
-                {getGrade(game.environment)}
-              </span>{" "}
-              with a projected total of{" "}
-              <span className="font-bold text-white">
-                {game.projected_total ?? "pending"}
-              </span>
-              . Use this page as a matchup hub before digging into individual player pages.
-            </p>
-          </div>
-
-          <div className="grid gap-5 p-5 md:grid-cols-3">
-            <MeterCard
-              label="Scoring Environment"
-              value={game.projected_total ?? 0}
-              display={game.projected_total ?? "Pending"}
-              max={240}
-              note={
-                (game.projected_total ?? 0) >= 225
-                  ? "Scoring setup supports player production."
-                  : "Lower total creates a more selective setup."
-              }
-            />
-
-            <MeterCard
-              label="Pace Profile"
-              value={game.pace ?? 0}
-              display={game.pace ?? "Pending"}
-              max={105}
-              note={
-                (game.pace ?? 0) >= 100
-                  ? "Possession volume is favorable."
-                  : "Pace data pending or slower profile."
-              }
-            />
-
-            <MeterCard
-              label="Environment Score"
-              value={(game.environment ?? 0) * 10}
-              display={`${game.environment ?? "-"} / 10`}
-              max={100}
-              note={`${getGrade(game.environment)} matchup profile.`}
-            />
-          </div>
-        </section>
-
-        <section className="mt-8 grid gap-5 md:grid-cols-3">
-          <TargetCard title="Best Scoring Signal" prop={bestScoring} />
-          <TargetCard title="Best Rebound Signal" prop={bestRebounding} />
-          <TargetCard title="Best Assist Signal" prop={bestAssisting} />
-        </section>
-
-        <section className="mt-8 overflow-hidden rounded-2xl border border-emerald-500/40 bg-emerald-500/10">
-          <div className="border-b border-emerald-500/20 p-5">
-            <p className="text-xs font-bold uppercase tracking-wide text-emerald-300">
-              Top Game Signals
-            </p>
-            <h2 className="mt-1 text-2xl font-black">Player Performance Signals</h2>
-            <p className="mt-2 text-sm text-zinc-300">
-              Ranked by recent average versus current line.
-            </p>
-          </div>
-
-          <div className="grid gap-5 p-5 md:grid-cols-5">
-            {topSignals.map((prop, index) => (
-              <Link
-                key={prop.id}
-                href={`/players/${cleanSlug(prop.player)}`}
-                className="rounded-xl border border-zinc-800 bg-black/40 p-4 transition hover:-translate-y-1 hover:border-emerald-500/60"
-              >
-                <p className="text-xs text-zinc-500">#{index + 1} Signal</p>
-
-                <h3 className="mt-2 font-black">{prop.player}</h3>
-
-                <p className="mt-2 text-sm text-zinc-400">
-                  {prop.market} {prop.line}
-                </p>
-
-                <p className={`mt-3 text-xl font-black ${signalColor(prop.calculatedEdge)}`}>
-                  {prop.calculatedEdge !== null
-                    ? `${prop.calculatedEdge > 0 ? "+" : ""}${prop.calculatedEdge.toFixed(1)}%`
-                    : "-"}
-                </p>
+                {homeLogo ? (
+                  <img
+                    src={homeLogo}
+                    alt={game.home_team}
+                    className="h-12 w-12 object-contain"
+                  />
+                ) : (
+                  <LogoFallback name={game.home_team} isWnba={isWnba} />
+                )}
 
                 <span
-                  className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-bold ${signalBadge(
-                    prop.calculatedEdge
-                  )}`}
+                  className={`rounded-full px-3 py-1 text-xs font-black ${
+                    isWnba
+                      ? "bg-orange-300/20 text-orange-200"
+                      : "bg-emerald-500/20 text-emerald-400"
+                  }`}
                 >
-                  {signalTier(prop.calculatedEdge)}
+                  {game.league || "NBA"}
                 </span>
+              </div>
 
-                <p className="mt-3 text-xs text-zinc-500">
-                  Hit Rate: {prop.hits}/{prop.total} ({prop.pct}%)
+              <h1 className="mt-5 text-4xl font-black tracking-tight md:text-6xl">
+                {game.away_team} @ {game.home_team}
+              </h1>
+
+              <p className="mt-3 text-lg text-zinc-400">
+                {formatTime(game.game_time)}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
+              <MetricCard label="Projected Total" value={formatNumber(game.projected_total)} />
+              <MetricCard label="Pace" value={formatNumber(game.pace, "N/A")} />
+
+              <div className={`rounded-2xl border ${accentBorder} ${accentBg} p-4`}>
+                <p className={`text-sm ${accentText}`}>Environment</p>
+                <p className={`mt-1 text-3xl font-black ${accentText}`}>
+                  {formatNumber(game.environment)}
                 </p>
-              </Link>
-            ))}
+                <p className={`text-sm font-bold ${accentText}`}>
+                  {environmentLabel(game.environment)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-            {topSignals.length === 0 && (
-              <div className="col-span-full rounded-xl border border-zinc-800 bg-black/40 p-6 text-center text-zinc-400">
-                No props found for this game yet.
+        <section className="mt-6 grid gap-6 lg:grid-cols-4">
+          <InfoCard
+            label="Spread"
+            value={`${game.favorite_team || "Favorite TBD"} ${
+              game.spread !== null && game.spread !== undefined
+                ? Number(game.spread).toFixed(1)
+                : "—"
+            }`}
+          />
+
+          <InfoCard label="Away Team Total" value={formatNumber(game.away_team_total)} />
+
+          <InfoCard label="Home Team Total" value={formatNumber(game.home_team_total)} />
+
+          <InfoCard
+            label="Moneyline"
+            value={`Away ${formatOdds(game.away_moneyline)} / Home ${formatOdds(
+              game.home_moneyline
+            )}`}
+            small
+          />
+        </section>
+
+        <section className="mt-10">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className={`text-sm font-bold uppercase tracking-[0.3em] ${accentText}`}>
+                HoopEdge Signals
+              </p>
+              <h2 className="mt-2 text-3xl font-black">
+                {isWnba ? "WNBA Best Bets" : "Best Bets"}
+              </h2>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {bestBets.length > 0 ? (
+              bestBets.map((prop, index) => (
+                <PropCard
+                  key={`${prop.player}-${prop.market}-${index}`}
+                  prop={prop}
+                  isWnba={isWnba}
+                  accentSoftText={accentSoftText}
+                />
+              ))
+            ) : (
+              <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-6 text-zinc-400">
+                No props loaded for this game yet.
               </div>
             )}
           </div>
         </section>
-
-        <section className="mt-8 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-          <div className="border-b border-zinc-800 p-5">
-            <h2 className="text-xl font-black">Full Game Props Table</h2>
-            <p className="mt-1 text-sm text-zinc-400">
-              All live props connected to this game, sorted by performance edge.
-            </p>
-          </div>
-
-          <div className="max-h-[620px] overflow-auto">
-            <table className="w-full min-w-[1100px] text-sm">
-              <thead className="sticky top-0 bg-zinc-950 text-zinc-400">
-                <tr>
-                  <th className="p-4 text-left">Player</th>
-                  <th className="p-4 text-center">Team</th>
-                  <th className="p-4 text-center">Market</th>
-                  <th className="p-4 text-center">Line</th>
-                  <th className="p-4 text-center">Odds</th>
-                  <th className="p-4 text-center">Book</th>
-                  <th className="p-4 text-center">Recent Avg</th>
-                  <th className="p-4 text-center">Hit Rate</th>
-                  <th className="p-4 text-center">Edge</th>
-                  <th className="p-4 text-center">Tier</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {enrichedProps.map((prop, index) => (
-                  <tr
-                    key={prop.id}
-                    className={`border-t border-zinc-800 transition hover:bg-emerald-500/10 ${
-                      index % 2 === 0 ? "bg-zinc-900/40" : "bg-black"
-                    }`}
-                  >
-                    <td className="p-4 text-left font-bold">
-                      <Link
-                        href={`/players/${cleanSlug(prop.player)}`}
-                        className="hover:text-blue-400"
-                      >
-                        {prop.player}
-                      </Link>
-                    </td>
-                    <td className="p-4 text-center text-zinc-300">
-                      {prop.team ?? "-"}
-                    </td>
-                    <td className="p-4 text-center">{prop.market}</td>
-                    <td className="p-4 text-center font-bold">{prop.line}</td>
-                    <td className="p-4 text-center font-bold text-blue-400">
-                      {formatOdds(prop.odds)}
-                    </td>
-                    <td className="p-4 text-center text-zinc-300">{prop.book}</td>
-                    <td className="p-4 text-center font-bold">{prop.recentAvg}</td>
-                    <td className="p-4 text-center text-zinc-300">
-                      {prop.hits}/{prop.total} ({prop.pct}%)
-                    </td>
-                    <td
-                      className={`p-4 text-center font-black ${signalColor(
-                        prop.calculatedEdge
-                      )}`}
-                    >
-                      {prop.calculatedEdge !== null
-                        ? `${prop.calculatedEdge > 0 ? "+" : ""}${prop.calculatedEdge.toFixed(1)}%`
-                        : "-"}
-                    </td>
-                    <td className="p-4 text-center">
-                      <span
-                        className={`rounded-full border px-3 py-1 text-xs font-bold ${signalBadge(
-                          prop.calculatedEdge
-                        )}`}
-                      >
-                        {signalTier(prop.calculatedEdge)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-
-                {enrichedProps.length === 0 && (
-                  <tr>
-                    <td colSpan={10} className="p-6 text-center text-zinc-400">
-                      No live props found for this game.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </section>
+      </div>
     </main>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  valueClass = "text-white",
-}: {
-  label: string;
-  value: string | number;
-  valueClass?: string;
-}) {
+function LogoFallback({ name, isWnba }: { name: string; isWnba: boolean }) {
   return (
-    <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-      <p className="text-sm text-zinc-400">{label}</p>
-      <p className={`mt-2 text-3xl font-black ${valueClass}`}>{value}</p>
-    </div>
-  );
-}
-
-function MeterCard({
-  label,
-  value,
-  display,
-  max,
-  note,
-}: {
-  label: string;
-  value: number;
-  display: string | number;
-  max: number;
-  note: string;
-}) {
-  const width = Math.min((value / max) * 100, 100);
-
-  return (
-    <div className="rounded-xl border border-zinc-800 bg-black/40 p-4">
-      <p className="text-sm text-zinc-400">{label}</p>
-      <p className="mt-1 text-2xl font-black">{display}</p>
-
-      <div className="mt-4 h-2 rounded-full bg-zinc-800">
-        <div
-          className="h-2 rounded-full bg-blue-400"
-          style={{ width: `${width}%` }}
-        />
-      </div>
-
-      <p className="mt-3 text-sm leading-5 text-zinc-400">{note}</p>
-    </div>
-  );
-}
-
-function TargetCard({
-  title,
-  prop,
-}: {
-  title: string;
-  prop:
-    | (Prop & {
-        recentAvg: number;
-        hits: number;
-        total: number;
-        pct: number;
-        calculatedEdge: number | null;
-      })
-    | undefined;
-}) {
-  if (!prop) {
-    return (
-      <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
-        <p className="text-sm font-bold uppercase text-zinc-500">{title}</p>
-        <p className="mt-3 text-zinc-400">No signal available yet.</p>
-      </div>
-    );
-  }
-
-  return (
-    <Link
-      href={`/players/${cleanSlug(prop.player)}`}
-      className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 transition hover:-translate-y-1 hover:border-blue-500/60"
+    <div
+      className={`flex h-12 w-12 items-center justify-center rounded-full text-xs font-black ${
+        isWnba
+          ? "bg-orange-300/15 text-orange-200"
+          : "bg-emerald-500/15 text-emerald-300"
+      }`}
     >
-      <p className="text-sm font-bold uppercase text-zinc-500">{title}</p>
-      <h3 className="mt-3 text-xl font-black">{prop.player}</h3>
-      <p className="mt-2 text-sm text-zinc-400">
-        {prop.market} {prop.line}
-      </p>
+      {initials(name)}
+    </div>
+  );
+}
 
-      <p className={`mt-4 text-2xl font-black ${signalColor(prop.calculatedEdge)}`}>
-        {prop.calculatedEdge !== null
-          ? `${prop.calculatedEdge > 0 ? "+" : ""}${prop.calculatedEdge.toFixed(1)}%`
-          : "-"}
-      </p>
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-zinc-800 bg-black/50 p-4">
+      <p className="text-sm text-zinc-500">{label}</p>
+      <p className="mt-1 text-3xl font-black">{value}</p>
+    </div>
+  );
+}
 
-      <p className="mt-2 text-sm text-zinc-400">
-        Avg {prop.recentAvg} • {prop.hits}/{prop.total} hit rate
+function InfoCard({
+  label,
+  value,
+  small = false,
+}: {
+  label: string;
+  value: string;
+  small?: boolean;
+}) {
+  return (
+    <div className="rounded-3xl border border-zinc-800 bg-zinc-950 p-5">
+      <p className="text-sm text-zinc-500">{label}</p>
+      <p className={`mt-2 font-black ${small ? "text-lg" : "text-2xl"}`}>
+        {value}
       </p>
-    </Link>
+    </div>
+  );
+}
+
+function PropCard({
+  prop,
+  isWnba,
+  accentSoftText,
+}: {
+  prop: RankedProp;
+  isWnba: boolean;
+  accentSoftText: string;
+}) {
+  const image = playerImageUrl(prop.player);
+
+  const accentBorder = isWnba
+    ? "hover:border-orange-300/70"
+    : "hover:border-emerald-500/60";
+
+  const badge = isWnba
+    ? "bg-orange-300/20 text-orange-200"
+    : "bg-emerald-500/20 text-emerald-400";
+
+  return (
+    <div
+      className={`group rounded-3xl border border-zinc-800 bg-zinc-950 p-5 transition hover:-translate-y-1 ${accentBorder} hover:bg-zinc-900`}
+    >
+      <div>
+        {prop.score >= 40 && (
+          <div className={`mb-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${badge}`}>
+            {isWnba ? "🧡 TOP PLAY" : "🔥 TOP PLAY"}
+          </div>
+        )}
+
+        <div className="flex items-center gap-4">
+          <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-zinc-900">
+            {image ? (
+              <img
+                src={image}
+                alt={prop.player}
+                className="h-full w-full object-cover object-top"
+              />
+            ) : (
+              <div
+                className={`flex h-full w-full items-center justify-center text-lg font-black ${
+                  isWnba
+                    ? "bg-orange-300/15 text-orange-200"
+                    : "bg-emerald-500/15 text-emerald-300"
+                }`}
+              >
+                {initials(prop.player)}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <h3 className="text-lg font-black">{prop.player}</h3>
+            <p className="text-sm text-zinc-400">{prop.team || "Team TBD"}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-zinc-800 bg-black/50 p-4">
+        <p className="text-sm text-zinc-500">Market</p>
+        <p className="text-xl font-black">
+          {prop.market} {prop.line ?? "—"}
+        </p>
+      </div>
+
+      <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
+        <Stat label="Odds" value={formatOdds(prop.odds)} />
+        <Stat label="Edge" value={`${formatNumber(prop.edge)}%`} accent={accentSoftText} />
+        <Stat label="Signal" value={edgeLabel(prop.edge)} accent={accentSoftText} />
+        <Stat label="Hit" value={`${formatNumber(prop.hit_rate)}%`} accent={accentSoftText} />
+        <Stat label="Score" value={prop.score.toFixed(1)} accent={accentSoftText} />
+      </div>
+
+      {prop.note && (
+        <p className="mt-4 text-sm leading-6 text-zinc-400">{prop.note}</p>
+      )}
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  accent = "text-white",
+}: {
+  label: string;
+  value: string;
+  accent?: string;
+}) {
+  return (
+    <div>
+      <p className="text-zinc-500">{label}</p>
+      <p className={`font-black ${accent}`}>{value}</p>
+    </div>
   );
 }
